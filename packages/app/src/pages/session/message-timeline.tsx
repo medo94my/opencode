@@ -1289,6 +1289,7 @@ export function MessageTimeline(props: {
         onPointerDown={handleListPointerDown}
         onScroll={handleListScroll}
         onClick={props.onAutoScrollInteraction}
+        data-session-scroll
         class="relative min-w-0 w-full h-full"
         style={{
           "--sticky-accordion-top": showHeader() ? "48px" : "0px",

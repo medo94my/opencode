@@ -19,6 +19,7 @@ import { DateTime } from "luxon"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { DialogSelectDirectory } from "@/components/dialog-select-directory"
 import { DialogSelectServer } from "@/components/dialog-select-server"
+import { HomeTips } from "@/components/home-tips"
 import { ServerConnection, useServer } from "@/context/server"
 import { useServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
@@ -278,6 +279,7 @@ function HomeDesign() {
             </div>
           </div>
         </Show>
+        <HomeTips />
       </section>
     </div>
   )

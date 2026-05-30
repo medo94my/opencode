@@ -34,6 +34,14 @@ export interface Settings {
     showSessionProgressBar: boolean
     showCustomAgents: boolean
     newLayoutDesigns?: boolean
+    showTimestamps: boolean
+    showThinking: boolean
+    showActions: boolean
+    concealCode: boolean
+    showGenericToolOutput: boolean
+    showScrollbar: boolean
+    diffWrap: boolean
+    enableAnimations: boolean
   }
   updates: {
     startup: boolean
@@ -121,6 +129,14 @@ const defaultSettings: Settings = {
     editToolPartsExpanded: false,
     showSessionProgressBar: true,
     showCustomAgents: false,
+    showTimestamps: true,
+    showThinking: true,
+    showActions: true,
+    concealCode: false,
+    showGenericToolOutput: true,
+    showScrollbar: true,
+    diffWrap: false,
+    enableAnimations: true,
   },
   updates: {
     startup: true,
@@ -247,6 +263,41 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         newLayoutDesigns: withFallback(() => store.general?.newLayoutDesigns, newLayoutDesignsDefault),
         setNewLayoutDesigns(value: boolean) {
           setStore("general", "newLayoutDesigns", value)
+        },
+        showTimestamps: withFallback(() => store.general?.showTimestamps, defaultSettings.general.showTimestamps),
+        setShowTimestamps(value: boolean) {
+          setStore("general", "showTimestamps", value)
+        },
+        showThinking: withFallback(() => store.general?.showThinking, defaultSettings.general.showThinking),
+        setShowThinking(value: boolean) {
+          setStore("general", "showThinking", value)
+        },
+        showActions: withFallback(() => store.general?.showActions, defaultSettings.general.showActions),
+        setShowActions(value: boolean) {
+          setStore("general", "showActions", value)
+        },
+        concealCode: withFallback(() => store.general?.concealCode, defaultSettings.general.concealCode),
+        setConcealCode(value: boolean) {
+          setStore("general", "concealCode", value)
+        },
+        showGenericToolOutput: withFallback(
+          () => store.general?.showGenericToolOutput,
+          defaultSettings.general.showGenericToolOutput,
+        ),
+        setShowGenericToolOutput(value: boolean) {
+          setStore("general", "showGenericToolOutput", value)
+        },
+        showScrollbar: withFallback(() => store.general?.showScrollbar, defaultSettings.general.showScrollbar),
+        setShowScrollbar(value: boolean) {
+          setStore("general", "showScrollbar", value)
+        },
+        diffWrap: withFallback(() => store.general?.diffWrap, defaultSettings.general.diffWrap),
+        setDiffWrap(value: boolean) {
+          setStore("general", "diffWrap", value)
+        },
+        enableAnimations: withFallback(() => store.general?.enableAnimations, defaultSettings.general.enableAnimations),
+        setEnableAnimations(value: boolean) {
+          setStore("general", "enableAnimations", value)
         },
       },
       updates: {

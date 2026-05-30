@@ -56,6 +56,8 @@ import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { syncSessionModel } from "@/pages/session/session-model-helpers"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
+import { SessionSidebarSections } from "@/components/session-sidebar-sections"
+import { SubagentFooter } from "@/components/subagent-footer"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
 import { useSessionCommands } from "@/pages/session/use-session-commands"
 import { useSessionHashScroll } from "@/pages/session/use-session-hash-scroll"
@@ -1836,9 +1838,16 @@ export default function Page() {
           reviewSnap={ui.reviewSnap}
           size={size}
         />
+
+        <Show when={params.id}>
+          <div class="hidden lg:flex flex-col w-56 shrink-0 border-l border-border-weaker-base bg-background-base overflow-y-auto">
+            <SessionSidebarSections />
+          </div>
+        </Show>
       </div>
 
       <TerminalPanel />
+      <SubagentFooter />
     </div>
   )
 }

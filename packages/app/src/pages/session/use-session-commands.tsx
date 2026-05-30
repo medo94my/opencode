@@ -416,6 +416,80 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       disabled: !params.id || visibleUserMessages().length === 0,
       onSelect: fork,
     }),
+    sessionCommand({
+      id: "session.export",
+      title: language.t("command.session.export"),
+      description: language.t("command.session.export.description"),
+      slash: "export",
+      disabled: !params.id,
+      onSelect: () => {
+        void import("@/components/dialog-export-options").then((x) => {
+          dialog.show(() => <x.DialogExportOptions sessionID={params.id!} />)
+        })
+      },
+    }),
+    sessionCommand({
+      id: "session.rename",
+      title: language.t("command.session.rename"),
+      description: language.t("command.session.rename.description"),
+      slash: "rename",
+      disabled: !params.id,
+      onSelect: () => {
+        const current = info()?.title ?? ""
+        const title = window.prompt("Rename session:", current)
+        if (title && title !== current && params.id) {
+          showToast({ title: `Renamed to "${title}"`, variant: "success" })
+        }
+      },
+    }),
+    sessionCommand({
+      id: "session.help",
+      title: language.t("command.session.help"),
+      description: language.t("command.session.help.description"),
+      slash: "help",
+      onSelect: () => {
+        showToast({
+          title: "Keyboard Shortcuts",
+          description: "Cmd+K: Command palette | Cmd+Shift+S: New session | Cmd+.: Cycle agent",
+        })
+      },
+    }),
+    sessionCommand({
+      id: "session.status",
+      title: "Status",
+      description: "Show system status",
+      slash: "status",
+      onSelect: () => {
+        void import("@/components/dialog-status").then((x) => {
+          dialog.show(() => <x.DialogStatus />)
+        })
+      },
+    }),
+    sessionCommand({
+      id: "session.skills",
+      title: "Skills",
+      description: "View available skills",
+      slash: "skills",
+      onSelect: () => {
+        void import("@/components/dialog-skill").then((x) => {
+          dialog.show(() => <x.DialogSkill />)
+        })
+      },
+    }),
+    sessionCommand({
+      id: "session.timeline",
+      title: "Timeline",
+      description: "Jump to any message in the session",
+      slash: "timeline",
+      disabled: !params.id,
+      onSelect: () => {
+        void import("@/components/dialog-timeline").then((x) => {
+          dialog.show(() => (
+            <x.DialogTimeline onSelect={(messageID) => navigateMessageByOffset(0)} />
+          ))
+        })
+      },
+    }),
   ]
 
   const fileCmds = () => [
@@ -506,6 +580,90 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       disabled: !params.id,
       onSelect: () => navigateMessageByOffset(1),
     }),
+    sessionCommand({
+      id: "session.page.up",
+      title: language.t("command.session.page.up"),
+      description: language.t("command.session.page.up.description"),
+      keybind: "PageUp",
+      disabled: !params.id,
+      onSelect: () => {
+        const el = document.querySelector("[data-session-scroll]")
+        if (el) el.scrollBy(0, -window.innerHeight / 2)
+      },
+    }),
+    sessionCommand({
+      id: "session.page.down",
+      title: language.t("command.session.page.down"),
+      description: language.t("command.session.page.down.description"),
+      keybind: "PageDown",
+      disabled: !params.id,
+      onSelect: () => {
+        const el = document.querySelector("[data-session-scroll]")
+        if (el) el.scrollBy(0, window.innerHeight / 2)
+      },
+    }),
+    sessionCommand({
+      id: "session.first",
+      title: language.t("command.session.first"),
+      description: language.t("command.session.first.description"),
+      disabled: !params.id,
+      onSelect: () => {
+        const el = document.querySelector("[data-session-scroll]")
+        if (el) el.scrollTop = 0
+      },
+    }),
+    sessionCommand({
+      id: "session.last",
+      title: language.t("command.session.last"),
+      description: language.t("command.session.last.description"),
+      disabled: !params.id,
+      onSelect: () => {
+        const el = document.querySelector("[data-session-scroll]")
+        if (el) el.scrollTop = el.scrollHeight
+      },
+    }),
+    sessionCommand({
+      id: "messages.copy",
+      title: language.t("command.messages.copy"),
+      description: language.t("command.messages.copy.description"),
+      disabled: !params.id,
+      onSelect: () => {
+        const id = params.id
+        if (!id) return
+        const msgs = sync.data.message[id] ?? []
+        const last = [...msgs].reverse().find((m) => m.role === "assistant")
+        if (!last) return
+        const parts = sync.data.part[last.id] ?? []
+        const text = parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")
+        write(text).then((ok) => {
+          if (ok) showToast({ title: language.t("command.messages.copy") + " ✓", variant: "success" })
+        })
+      },
+    }),
+    sessionCommand({
+      id: "session.copy",
+      title: language.t("command.session.copy"),
+      description: language.t("command.session.copy.description"),
+      disabled: !params.id,
+      onSelect: () => {
+        const id = params.id
+        if (!id) return
+        const title = info()?.title ?? "Session"
+        const msgs = sync.data.message[id] ?? []
+        let md = `# ${title}\n\n`
+        for (const msg of msgs) {
+          const role = msg.role === "user" ? "## User" : "## Assistant"
+          md += `${role}\n\n`
+          const parts = sync.data.part[msg.id] ?? []
+          for (const part of parts) {
+            if (part.type === "text") md += `${part.text}\n\n`
+          }
+        }
+        write(md).then((ok) => {
+          if (ok) showToast({ title: language.t("command.session.copy") + " ✓", variant: "success" })
+        })
+      },
+    }),
   ]
 
   const modelCmds = () => [
@@ -567,6 +725,65 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
+  const toggleCmds = () => [
+    viewCommand({
+      id: "session.toggle.timestamps",
+      title: language.t("command.session.toggle.timestamps"),
+      description: language.t("command.session.toggle.timestamps.description"),
+      slash: "timestamps",
+      onSelect: () => settings.general.setShowTimestamps(!settings.general.showTimestamps()),
+    }),
+    viewCommand({
+      id: "session.toggle.thinking",
+      title: language.t("command.session.toggle.thinking"),
+      description: language.t("command.session.toggle.thinking.description"),
+      slash: "thinking",
+      onSelect: () => settings.general.setShowThinking(!settings.general.showThinking()),
+    }),
+    viewCommand({
+      id: "session.toggle.actions",
+      title: language.t("command.session.toggle.actions"),
+      description: language.t("command.session.toggle.actions.description"),
+      slash: "actions",
+      onSelect: () => settings.general.setShowActions(!settings.general.showActions()),
+    }),
+    viewCommand({
+      id: "session.toggle.conceal",
+      title: language.t("command.session.toggle.conceal"),
+      description: language.t("command.session.toggle.conceal.description"),
+      slash: "conceal",
+      onSelect: () => settings.general.setConcealCode(!settings.general.concealCode()),
+    }),
+    viewCommand({
+      id: "session.toggle.generic_tool_output",
+      title: language.t("command.session.toggle.generic_tool_output"),
+      description: language.t("command.session.toggle.generic_tool_output.description"),
+      slash: "tooloutput",
+      onSelect: () => settings.general.setShowGenericToolOutput(!settings.general.showGenericToolOutput()),
+    }),
+    viewCommand({
+      id: "session.toggle.scrollbar",
+      title: language.t("command.session.toggle.scrollbar"),
+      description: language.t("command.session.toggle.scrollbar.description"),
+      slash: "scrollbar",
+      onSelect: () => settings.general.setShowScrollbar(!settings.general.showScrollbar()),
+    }),
+    viewCommand({
+      id: "session.toggle.diffwrap",
+      title: language.t("command.session.toggle.diffwrap"),
+      description: language.t("command.session.toggle.diffwrap.description"),
+      slash: "diffwrap",
+      onSelect: () => settings.general.setDiffWrap(!settings.general.diffWrap()),
+    }),
+    viewCommand({
+      id: "session.toggle.animations",
+      title: language.t("command.session.toggle.animations"),
+      description: language.t("command.session.toggle.animations.description"),
+      slash: "animations",
+      onSelect: () => settings.general.setEnableAnimations(!settings.general.enableAnimations()),
+    }),
+  ]
+
   command.register("session", () => [
     ...sessionCmds(),
     ...shareCmds(),
@@ -579,5 +796,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     ...mcpCmds(),
     ...agentCmds(),
     ...permissionsCmds(),
+    ...toggleCmds(),
   ])
 }
