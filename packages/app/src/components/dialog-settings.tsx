@@ -25,11 +25,11 @@ export const DialogSettings: Component = () => {
                   <div class="flex flex-col gap-1.5 w-full">
                     <Tabs.Trigger value="general">
                       <Icon name="sliders" />
-                      {language.t("settings.tab.general")}
+                      <span class="tabs-label">{language.t("settings.tab.general")}</span>
                     </Tabs.Trigger>
                     <Tabs.Trigger value="shortcuts">
                       <Icon name="keyboard" />
-                      {language.t("settings.tab.shortcuts")}
+                      <span class="tabs-label">{language.t("settings.tab.shortcuts")}</span>
                     </Tabs.Trigger>
                   </div>
                 </div>
@@ -39,14 +39,15 @@ export const DialogSettings: Component = () => {
                   <div class="flex flex-col gap-1.5 w-full">
                     <Tabs.Trigger value="providers">
                       <Icon name="providers" />
-                      {language.t("settings.providers.title")}
+                      <span class="tabs-label">{language.t("settings.providers.title")}</span>
                     </Tabs.Trigger>
                     <Tabs.Trigger value="models">
                       <Icon name="models" />
-                      {language.t("settings.models.title")}
+                      <span class="tabs-label">{language.t("settings.models.title")}</span>
                     </Tabs.Trigger>
                   </div>
                 </div>
+
               </div>
             </div>
             <div class="flex flex-col gap-1 pl-1 py-1 text-12-medium text-text-weak">

@@ -9,6 +9,7 @@ import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tag } from "@opencode-ai/ui/tag"
 import { Dialog } from "@opencode-ai/ui/dialog"
 import { List } from "@opencode-ai/ui/list"
+import { Select } from "@opencode-ai/ui/select"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
@@ -37,7 +38,7 @@ const ModelList: Component<{
 
   return (
     <List
-      class={`flex-1 min-h-0 [&_[data-slot=list-scroll]]:flex-1 [&_[data-slot=list-scroll]]:min-h-0 ${props.class ?? ""}`}
+      class={`flex-1 min-h-0 [&_[data-slot=list-scroll]]:flex-1 [&_[data-slot=list-scroll]]:min-h-0 [&_[data-slot=list-scroll]]:overflow-y-auto ${props.class ?? ""}`}
       search={{ placeholder: language.t("dialog.model.search.placeholder"), autofocus: true, action: props.action }}
       emptyMessage={language.t("dialog.model.empty")}
       key={(x) => `${x.provider.id}:${x.id}`}
@@ -141,7 +142,7 @@ export function ModelSelectorPopover(props: {
       </Kobalte.Trigger>
       <Kobalte.Portal>
         <Kobalte.Content
-          class="w-72 h-80 flex flex-col p-2 rounded-md border border-border-base bg-surface-raised-stronger-non-alpha shadow-md z-50 outline-none overflow-hidden"
+          class="w-72 max-h-[min(60vh,320px)] flex flex-col p-2 rounded-md border border-border-base bg-surface-raised-stronger-non-alpha shadow-md z-50 outline-none overflow-hidden"
           onEscapeKeyDown={(event) => {
             close("escape")
             event.preventDefault()
@@ -196,9 +197,10 @@ export function ModelSelectorPopover(props: {
   )
 }
 
-export const DialogSelectModel: Component<{ provider?: string; model?: ModelState }> = (props) => {
+export const DialogSelectModel: Component<{ provider?: string; model?: ModelState; showVariants?: boolean; variants?: string[] }> = (props) => {
   const dialog = useDialog()
   const language = useLanguage()
+  const local = useLocal()
 
   const provider = () => {
     void import("./dialog-select-provider").then((x) => {
@@ -212,6 +214,8 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
     })
   }
 
+  const variantList = () => props.variants ?? ["default"]
+
   return (
     <Dialog
       title={language.t("dialog.model.select.title")}
@@ -221,6 +225,23 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
         </Button>
       }
     >
+      <Show when={props.showVariants && variantList().length > 1}>
+        <div class="flex items-center gap-2 px-3 pb-3">
+          <span class="text-13-medium text-text-weak shrink-0">{language.t("command.model.variant.cycle")}:</span>
+          <Select
+            size="small"
+            options={variantList()}
+            current={local.model.variant.current() ?? "default"}
+            label={(x) => (x === "default" ? language.t("common.default") : x)}
+            onSelect={(value) => {
+              local.model.variant.set(value === "default" ? undefined : value)
+            }}
+            variant="secondary"
+            triggerVariant="settings"
+            class="min-w-0"
+          />
+        </div>
+      </Show>
       <ModelList provider={props.provider} model={props.model} onSelect={() => dialog.close()} />
       <Button variant="ghost" class="ml-3 mt-5 mb-6 text-text-base self-start" onClick={manage}>
         {language.t("dialog.model.manage")}

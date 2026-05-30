@@ -820,7 +820,8 @@ export function Autocomplete(props: {
       top={position().y - height()}
       left={position().x}
       width={position().width}
-      zIndex={100}
+      zIndex={2500}
+      backgroundColor={theme.backgroundMenu}
       {...SplitBorder}
       borderColor={theme.border}
     >

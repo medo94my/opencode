@@ -41,11 +41,14 @@ import { DockShellForm, DockTray } from "@opencode-ai/ui/dock-surface"
 import { Icon, type IconProps } from "@opencode-ai/ui/icon"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
+import { showToast } from "@opencode-ai/ui/toast"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Select } from "@opencode-ai/ui/select"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { useProviders } from "@/hooks/use-providers"
+import { useAudioRecorder } from "@/hooks/use-audio-recorder"
+import { transcribeAudio, isSpeechSupported, checkMicrophonePermission } from "@/utils/transcribe"
 import { useCommand } from "@/context/command"
 import { Persist, persisted } from "@/utils/persist"
 import { usePermission } from "@/context/permission"
@@ -141,6 +144,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const platform = usePlatform()
   const settings = useSettings()
   const { params, tabs, view } = useSessionLayout()
+  const recorder = useAudioRecorder()
   let editorRef!: HTMLDivElement
   let fileInputRef: HTMLInputElement | undefined
   let scrollRef!: HTMLDivElement
@@ -473,6 +477,28 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const shellModeKey = "mod+shift+x"
   const normalModeKey = "mod+shift+e"
+
+  createEffect(on(recorder.error, (err) => {
+    if (!err) return
+    showToast({ variant: "error", title: "Voice input", description: err })
+  }))
+
+  createEffect(on(recorder.audioBlob, (blob) => {
+    if (!blob) return
+    const signal = recorder.getAbortSignal()
+    transcribeAudio(blob, signal).then((text) => {
+      if (text) {
+        prompt.set([{ type: "text", content: text, start: 0, end: text.length }], text.length)
+        requestAnimationFrame(() => editorRef?.focus())
+      }
+    }).catch((err) => {
+      if (signal?.aborted) return
+      const msg = err instanceof Error ? err.message : "Transcription failed"
+      showToast({ variant: "error", title: language.t("common.requestFailed"), description: msg })
+    }).finally(() => {
+      recorder.reset()
+    })
+  }))
 
   command.register("prompt-input", () => [
     {
@@ -1562,13 +1588,92 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       aria-label={language.t("prompt.action.attachFile")}
                     />
                   </TooltipKeybind>
+                  <Show when={recorder.supported() && store.mode === "normal"}>
+                    <TooltipKeybind
+                      placement="top"
+                      title={
+                        recorder.state() === "recording"
+                          ? "Tap to stop recording"
+                          : recorder.state() === "transcribing"
+                            ? "Transcribing..."
+                            : "Voice input"
+                      }
+                      keybind=""
+                    >
+                      <IconButton
+                        data-action="prompt-mic"
+                        type="button"
+                        icon={
+                          recorder.state() === "recording"
+                            ? "recording"
+                            : recorder.state() === "transcribing"
+                              ? "mic-off"
+                              : "mic"
+                        }
+                        variant="ghost"
+                        class={`size-7 rounded-md p-[6px] ${
+                          recorder.state() === "recording"
+                            ? "text-red-500 animate-pulse"
+                            : recorder.state() === "transcribing"
+                              ? "text-yellow-500"
+                              : "text-v2-icon-icon-muted"
+                        }`}
+                        style={buttons()}
+                        onClick={() => {
+                          if (recorder.state() === "recording") {
+                            recorder.stop()
+                          } else {
+                            recorder.start()
+                          }
+                        }}
+                        disabled={recorder.state() === "transcribing"}
+                        tabIndex={store.mode === "normal" ? undefined : -1}
+                        aria-label="Voice input"
+                      />
+                    </TooltipKeybind>
+                  </Show>
                   <Show when={showAgentControl()}>
                     <ComposerAgentControl state={agentControlState()} />
                   </Show>
                   <Show when={newSession() && !selectedProject()}>
                     <ComposerPickerTrigger state={newProjectTriggerState()} />
                   </Show>
-                  <ComposerModelControl state={modelControlState()} />
+                  <Show when={!providersLoading()}>
+                    <TooltipKeybind
+                      placement="top"
+                      gutter={4}
+                      title={language.t("command.model.choose")}
+                      keybind={command.keybind("model.choose")}
+                    >
+                      <button
+                        data-action="prompt-model"
+                        type="button"
+                        class="flex h-7 items-center gap-1.5 rounded px-2 text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-faint transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none"
+                        style={control()}
+                        onClick={() => {
+                          void import("@/components/dialog-select-model").then((x) => {
+                            dialog.show(() => (
+                              <x.DialogSelectModel
+                                showVariants
+                                variants={variants()}
+                              />
+                            ))
+                          })
+                        }}
+                      >
+                        <Show when={local.model.current()?.provider?.id}>
+                          <ProviderIcon
+                            id={local.model.current()?.provider?.id ?? ""}
+                            class="size-4 shrink-0 opacity-40"
+                          />
+                        </Show>
+                        <span class="truncate max-w-[100px]">
+                          {local.model.current()?.name ?? language.t("dialog.model.select.title")}
+                        </span>
+                        <Icon name="chevron-down" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+                      </button>
+                    </TooltipKeybind>
+                  </Show>
                 </div>
                 <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
                   <IconButton
@@ -1755,6 +1860,44 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       <Icon name="plus" class="size-4.5" />
                     </Button>
                   </TooltipKeybind>
+                  <Show when={recorder.supported() && store.mode === "normal"}>
+                    <TooltipKeybind placement="top" title="Voice input" keybind="">
+                      <Button
+                        data-action="prompt-mic"
+                        type="button"
+                        variant="ghost"
+                        class="size-8 p-0"
+                        style={buttons()}
+                        onClick={() => {
+                          if (recorder.state() === "recording") {
+                            recorder.stop()
+                          } else {
+                            recorder.start()
+                          }
+                        }}
+                        disabled={recorder.state() === "transcribing"}
+                        tabIndex={store.mode === "normal" ? undefined : -1}
+                        aria-label="Voice input"
+                      >
+                        <Icon
+                          name={
+                            recorder.state() === "recording"
+                              ? "recording"
+                              : recorder.state() === "transcribing"
+                                ? "mic-off"
+                                : "mic"
+                          }
+                          class={`size-4.5 ${
+                            recorder.state() === "recording"
+                              ? "text-red-500 animate-pulse"
+                              : recorder.state() === "transcribing"
+                                ? "text-yellow-500"
+                                : ""
+                          }`}
+                        />
+                      </Button>
+                    </TooltipKeybind>
+                  </Show>
                 </div>
               </div>
             </div>
@@ -1888,7 +2031,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                             </TooltipKeybind>
                           </Show>
                         </div>
-                        <Show when={variants().length > 2}>
+                        <Show when={variants().length > 1}>
                           <div
                             data-component="prompt-variant-control"
                             style={providersShouldFadeIn() ? { animation: "fade-in 0.3s" } : undefined}

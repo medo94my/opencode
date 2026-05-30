@@ -56,6 +56,7 @@ import { Worktree } from "@/worktree"
 import { Workspace } from "@/control-plane/workspace"
 import { CorsConfig, isAllowedCorsOrigin, type CorsOptions } from "@/server/cors"
 import { serveUIEffect } from "@/server/shared/ui"
+import { HttpApiProxy as proxy } from "./middleware/proxy"
 import { ServerAuth } from "@/server/auth"
 import { InstanceHttpApi, RootHttpApi } from "./api"
 import { PublicApi } from "./public"
@@ -165,6 +166,15 @@ const docRoute = HttpRouter.use((router) => router.add("GET", "/doc", () => Effe
   Layer.provide(authOnlyRouterLayer),
 )
 
+const sttRoute = HttpRouter.use((router) =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+    yield* router.add("POST", "/api/stt/v1/audio/transcriptions", (request) =>
+      proxy.http(client, "http://localhost:8086/v1/audio/transcriptions", undefined, request),
+    )
+  }),
+)
+
 const uiRoute = HttpRouter.use((router) =>
   Effect.gen(function* () {
     const fs = yield* AppFileSystem.Service
@@ -186,7 +196,7 @@ type RouteRequirements =
 export function createRoutes(
   corsOptions?: CorsOptions,
 ): Layer.Layer<never, EffectConfig.ConfigError, RouteRequirements> {
-  return Layer.mergeAll(rootApiRoutes, eventApiRoutes, ptyConnectApiRoutes, instanceRoutes, docRoute, uiRoute).pipe(
+  return Layer.mergeAll(rootApiRoutes, eventApiRoutes, ptyConnectApiRoutes, instanceRoutes, docRoute, sttRoute, uiRoute).pipe(
     Layer.provide([
       errorLayer,
       compressionLayer,

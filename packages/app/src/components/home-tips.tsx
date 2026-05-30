@@ -1,5 +1,5 @@
 import { Component, createMemo, For, Show } from "solid-js"
-import { useSync } from "@/context/sync"
+import { useServerSync } from "@/context/server-sync"
 import { Icon } from "@opencode-ai/ui/icon"
 
 type Tip = {
@@ -10,7 +10,7 @@ type Tip = {
 }
 
 export const HomeTips: Component = () => {
-  const sync = useSync()
+  const sync = useServerSync()
 
   const hasProvider = createMemo(() => {
     const connected = sync.data.provider?.connected ?? []

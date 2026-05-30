@@ -134,8 +134,8 @@ export const PromptPopover: Component<PromptPopoverProps> = (props) => {
               </For>
             </Show>
           </Match>
-        </Switch>
-      </div>
+          </Switch>
+        </div>
     </Show>
   )
 }
